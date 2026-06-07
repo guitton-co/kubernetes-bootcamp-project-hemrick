@@ -26,7 +26,9 @@ releases:
     # Pin a version for reproducibility. Find current ones with:
     #   helm repo add apache-airflow https://airflow.apache.org && helm repo update
     #   helm search repo apache-airflow/airflow --versions
-    # version: "1.18.0"
+    # Pin for reproducibility. 1.22.0 is current stable (bundles Airflow 3.2.x).
+    # Verify/adjust with the search command above before the cohort.
+    version: "1.22.0"
     needs:
       - data/postgres
     values:

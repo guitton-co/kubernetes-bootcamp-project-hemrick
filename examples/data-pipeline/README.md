@@ -13,12 +13,20 @@ kubectl -n data get pods -w
 
 ## See the Airflow UI
 
+In Airflow 3 the webserver is the **API server**, so the service is
+`airflow-api-server`:
+
 ```sh
-kubectl -n data port-forward svc/airflow-webserver 8080:8080
-# open http://localhost:8080  (default login: admin / admin)
+kubectl -n data port-forward svc/airflow-api-server 8080:8080
+# open http://localhost:8080
 ```
 
 …or right-click the service in Lens/FreeLens → *port-forward*.
+
+> Airflow 3 no longer ships a fixed `admin/admin` login. The simple auth
+> manager prints a generated password on first start — grab it from the
+> api-server pod logs:
+> `kubectl -n data logs deploy/airflow-api-server | grep -i password`
 
 ## Make it yours
 
