@@ -4,12 +4,12 @@ metadata:
   name: cohort-quota
 spec:
   hard:
-    requests.cpu: "1"
-    requests.memory: 1Gi
-    limits.cpu: "2"
-    limits.memory: 2Gi
-    pods: "15"
-    persistentvolumeclaims: "3"
+    requests.cpu: "2"
+    requests.memory: 2Gi
+    limits.cpu: "4"
+    limits.memory: 4Gi
+    pods: "25"
+    persistentvolumeclaims: "5"
     services.loadbalancers: "0"
 ---
 apiVersion: v1

@@ -7,10 +7,9 @@ you'll hit in your own projects.
 ## Deploy
 
 ```sh
-export HANDLE=<your-github-handle>     # one-time per shell
-kubectl create namespace troubleshooting-$HANDLE
-kubectl -n troubleshooting-$HANDLE apply -f examples/troubleshooting/k8s/
-kubectl -n troubleshooting-$HANDLE get pods
+export HANDLE=<your-github-handle-lowercased>     # one-time per shell
+kubectl -n $HANDLE apply -f examples/troubleshooting/k8s/
+kubectl -n $HANDLE get pods
 ```
 
 You should see three Pods, all unhealthy in different ways.
@@ -51,7 +50,7 @@ The container starts fine, the app works, but the readiness probe hits a
 ## Cleanup
 
 ```sh
-kubectl delete namespace troubleshooting-$HANDLE
+kubectl -n $HANDLE delete -f examples/troubleshooting/k8s/
 ```
 
 ## Make it harder

@@ -28,17 +28,49 @@ data:
 # Comment this out to fall back to the chart default (CeleryExecutor).
 executor: LocalExecutor
 
-# Sync DAGs straight from YOUR fork of this repo — no image rebuilds to iterate.
-# Replace <your-username> after you accept the GitHub Classroom assignment.
-# Your fork MUST be public (gitSync uses HTTPS without creds). If it's private,
-# the dag-processor / scheduler / triggerer init container will CrashLoopBackOff
-# with "Repository not found. Authentication failed."
+# Shared cohort Airflow — pulls DAGs from the org's main repo (public).
+# Students do NOT redeploy this Airflow; they reference the shared instance
+# and drop new DAGs by opening a PR against examples/data-pipeline/dags/
+# (Louis merges → gitSync picks up within ~60s).
 dags:
   gitSync:
     enabled: true
-    repo: https://github.com/<your-username>/kubernetes-bootcamp.git
+    repo: https://github.com/guitton-co/kubernetes-bootcamp.git
     branch: main
     rev: HEAD
     depth: 1
     maxFailures: 0
     subPath: "examples/data-pipeline/dags"
+
+# Schedule ALL Airflow components onto the dedicated `airflow-pool` node
+# (labeled dedicated=airflow, tainted dedicated=airflow:NoSchedule). The 3
+# student nodes (s-1vcpu-2gb each) stay clear for student workloads.
+nodeSelector:
+  dedicated: airflow
+tolerations:
+  - key: dedicated
+    operator: Equal
+    value: airflow
+    effect: NoSchedule
+
+# Even on a beefier s-2vcpu-4gb node, Airflow 3.x boot is slow. Keep the
+# relaxed probe budgets so we don't fight the chart during startup.
+apiServer:
+  startupProbe:
+    timeoutSeconds: 30
+    failureThreshold: 30   # 30 * 10s = 300s
+
+scheduler:
+  startupProbe:
+    timeoutSeconds: 30
+    failureThreshold: 30
+  livenessProbe:
+    timeoutSeconds: 60
+
+dagProcessor:
+  livenessProbe:
+    timeoutSeconds: 60
+
+triggerer:
+  livenessProbe:
+    timeoutSeconds: 60

@@ -16,8 +16,9 @@ spec:
     spec:
       containers:
         - name: nextjs
-          # Build & push your image first, then set this. See the README.
-          image: ghcr.io/<your-username>/k8s-kata-nextjs:latest
+          # Default = the reference image pushed to Louis's ghcr (public).
+          # Swap in your own after you build+push during the async week.
+          image: ghcr.io/louisguitton/k8s-kata-nextjs:latest
           env:
             # Surface the pod name to the app (downward API).
             - name: POD_NAME

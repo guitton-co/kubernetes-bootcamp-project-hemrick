@@ -18,16 +18,15 @@ Schedule something to run on a cron expression. No image to build — uses
 ## Deploy
 
 ```sh
-export HANDLE=<your-github-handle>
-kubectl create namespace cron-$HANDLE
-kubectl -n cron-$HANDLE apply -f examples/cronjob/k8s/cronjob.yaml
+export HANDLE=<your-github-handle-lowercased>
+kubectl -n $HANDLE apply -f examples/cronjob/k8s/cronjob.yaml
 ```
 
 ## Watch the chain `CronJob → Job → Pod`
 
 ```sh
-kubectl -n cron-$HANDLE get cronjob,jobs,pods
-kubectl -n cron-$HANDLE logs job/$(kubectl -n cron-$HANDLE get jobs -o name | head -1 | cut -d/ -f2)
+kubectl -n $HANDLE get cronjob,jobs,pods
+kubectl -n $HANDLE logs job/$(kubectl -n $HANDLE get jobs -o name | head -1 | cut -d/ -f2)
 ```
 
 In FreeLens/Lens: open the CronJob → see the spawned Jobs in the right panel,

@@ -16,8 +16,9 @@ spec:
     spec:
       containers:
         - name: web
-          # Build & push your image first, then set this. See the README.
-          image: ghcr.io/<your-username>/k8s-kata-web:latest
+          # Default = the reference image pushed to Louis's ghcr (public).
+          # Swap in your own after you build+push during the async week.
+          image: ghcr.io/louisguitton/k8s-kata-web:latest
           ports:
             - name: http
               containerPort: 8000

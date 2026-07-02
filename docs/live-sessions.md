@@ -9,44 +9,65 @@ change things in Git.
   land between sessions. Each project gets a 5-min K8s-pattern walkthrough plus
   a short live demo at the end.
 
-The cohort shares one managed cluster. Namespace convention is
-`<resource>-<github-handle>` (e.g. `web-mxkrn`, `data-mxkrn`) — drilled in S1
-so nobody stomps each other's work.
+The cohort shares one managed cluster. **One namespace per student** = your
+GitHub handle (lowercased). All your workloads (web, nextjs, cron, project)
+go into that single namespace — drilled in S1 so nobody stomps each other's
+work.
 
 ---
 
-## Session 1 — Get on the cluster (~30 min)
+## Session 1 — Meet the cluster (~45 min, presentation-first)
 
-Goal: everyone has `kubectl get nodes` working, has Lens connected, and has
-deployed a working Pod by the end. Then a short tour of the four lenses
-(Logs / Shell / Events / YAML) on a Pod we **pre-broke** so they see the
-debugging pattern they'll need on their own projects.
-
-No image builds in S1. Students apply pre-built images (`ghcr.io/louisguitton/k8s-kata-web:latest`).
-Building + pushing their own images is async-week work.
+Presentation-first: Louis demoes on his own screen, students watch, take notes,
+and set up their own cluster access **after** the call using the pre-S1
+screencast (pinned in Slack). Session doubles as **information gathering** —
+build networking value inside the cohort + capture the info needed to make
+S2 relevant to each student's project.
 
 Block-based, not minute-locked. Adjust live based on the room.
 
-| Block | Topic                                | What we do                                                                                                                                                                                                                                              |
-| ----- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1     | **Cluster access — everyone in**     | Demo `export KUBECONFIG=...` + `kubectl get nodes`. Quick round-robin in Slack `#help`: paste your `kubectl get nodes` output. Pre-S1 screencast covers the Lens-add-cluster step, so we just confirm it.                                                |
-| 2     | **Lens tour — the resource graph**   | Open Lens, walk: Nodes → Workloads → Networking → Storage. Show that Deployment, ReplicaSet, Pod are the same chain in three places. **Anchor**: "this is what your projects will look like."                                                           |
-| 3     | **First workload — pre-built image** | Apply `examples/web-service/k8s/` (image `ghcr.io/louisguitton/k8s-kata-web:latest`) into your pre-created `web-<handle>` namespace. Watch the Deployment → ReplicaSet → Pod chain appear live. `kubectl -n web-<handle> port-forward svc/web 8080:80`. |
-| 4     | **The four lenses on a broken Pod**  | Apply `examples/troubleshooting/k8s/`. Walk through Events tab on `broken-image` (ImagePullBackOff), previous-logs on `broken-command` (CrashLoopBackOff), Shell + curl on `broken-probe` (Pod Running, not Ready). The Events tab is the headline.     |
-| 5     | **Q&A**                              | Open mic. Anything stuck or unclear. ~5 min budget.                                                                                                                                                                                                     |
-| 6     | **Wrap + project proposals**         | Point at `docs/project-ideas.md` (5 seed projects) and the PR template. **Proposal PR due Mon 6 Jul.** Reiterate Slack `#help` is the async channel.                                                                                                    |
+| Block | Time   | Topic                                    | What Louis does                                                                                                                                                                                                                                                                                                                                                  |
+| ----- | ------ | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1     | 5 min  | **Welcome + how this works**             | Two sessions (today + Fri 17 Jul), Slack `#help` async in between, project PR due Mon 6 Jul. Recording will be in Drive. Today = intro + tour, not hands-on.                                                                                                                                                                                                     |
+| 2     | 15 min | **Round-robin intros (info-gather)**     | Each student ~3 min. Ask specifically: name / current role / stack / **do you use K8s at work today?** / **what do you want to deploy on K8s?** / **what's your biggest K8s question or fear?** Louis takes notes — this feeds S2 prep. Push for concrete project answers even if they say "not sure yet."                                                       |
+| 3     | 5 min  | **Why K8s / when NOT K8s**               | 2-slide framing: K8s wins for stateful, non-HTTP, portability, non-Node stacks. PaaS (Vercel, Fly, Railway) wins for stateless web + edge. Knowing K8s makes you a better consumer of PaaS.                                                                                                                                                                     |
+| 4     | 15 min | **Meet the cluster — Lens screen-share** | Louis shares screen. Walk: `export KUBECONFIG=...` + `kubectl get nodes` → open Lens → add cluster → Nodes → Workloads (Deployment → ReplicaSet → Pod chain) → Networking (Service, Ingress) → Namespaces (show pre-created student namespaces) → Storage → Custom Resources. **Anchor**: "this is what your projects will look like."                          |
+| 5     | 5 min  | **Debugging with 4 lenses**              | Deploy `examples/troubleshooting/k8s/` live. Events tab on `broken-image` (ImagePullBackOff), previous-logs on `broken-command` (CrashLoopBackOff), describe on `broken-probe` (Pod Running, not Ready). Anchor: "when things break — always here."                                                                                                              |
+| 6     | 5 min  | **Homework + wrap**                      | Post-call TODO list (see below). Reiterate: Slack `#help` for anything, project proposal PR due Mon 6 Jul. `docs/project-ideas.md` if stuck.                                                                                                                                                                                                                     |
 
-**Hard rules stated up front (one slide):**
+**Slide: Hard rules for the shared cluster**
 
-- Your namespaces are pre-created: `web-<handle>`, `nextjs-<handle>`,
-  `cron-<handle>`, `troubleshooting-<handle>`, `project-<handle>`. They have
-  a `ResourceQuota` (1 CPU req, 1 GB mem, 15 Pods).
-- Always set `export HANDLE=<your-github-handle>` and use `-n web-$HANDLE`.
-  Never deploy to `default` or to an unsuffixed namespace.
+- Your namespace is pre-created — name = your GitHub handle (lowercased).
+  All your workloads (web, nextjs, cron, project) go there. It has a
+  `ResourceQuota` (2 CPU req, 2 GB mem, 25 Pods).
+- Always `export HANDLE=<your-github-handle-lowercased>` and use `-n $HANDLE`.
+  Never deploy to `default`.
 - The shared `data` namespace (Postgres + Airflow) is **read-only** — don't
-  redeploy `examples/data-pipeline`. Use the shared instance.
+  redeploy `examples/data-pipeline`. Use the shared instance. Contribute new
+  DAGs via PR to `examples/data-pipeline/dags/`.
 - Image pushes from Apple Silicon need `docker buildx build --platform linux/amd64`
   (covered in `SETUP.md`, comes up in async week).
+
+### Intro-round question script (Louis, read out loud)
+
+Keep it tight — ~3 min per student.
+
+1. Name + city + current role + stack you're building on.
+2. Do you use K8s at work today? What's your relationship to it?
+3. What do you want to deploy on K8s during this bootcamp? Be specific if you can.
+4. What's your biggest K8s question or fear?
+
+If they don't know #3: "That's fine — think out loud. What's a side project
+or work idea that needs a scheduler, a DB, or something more than a webhook?"
+
+### Post-call homework (share as Slack `#help` post after S1)
+
+1. Set up kubeconfig + Lens per the pinned screencast.
+2. `kubectl get nodes` should show all nodes Ready — paste output in Slack thread.
+3. Accept the Classroom invite (link in `WELCOME.md`) if you haven't yet.
+4. Open a PR with your project proposal — due **Mon 6 Jul**. Even 3 lines is
+   fine, we'll refine on Slack.
+5. Ping `#help` with any snag.
 
 **Self-study covered by repo, not S1:**
 
@@ -55,28 +76,18 @@ CronJob (`examples/cronjob/`), ConfigMap/Secret patterns (visible in
 debugging drills (`examples/troubleshooting/`). Each has a README and runs on
 the shared cluster. Slack `#help` is the support channel.
 
-## Pre-S1 prep (Louis, by Thu 2 Jul EOD)
-
-- Send screencast: "save the kubeconfig + add cluster to Lens + first nav."
-  Upload to Drive, post in Slack.
-- Run `scripts/init-cohort-namespaces.sh <handle1> <handle2> ...` once all
-  handles are in (deadline Mon 29 Jun per runbook). Creates the 5 namespaces
-  per student + applies `apps/resource-quota/quota.yaml`.
-- Post Slack thread "post your `kubectl get nodes` output" — due Thu 2 Jul EOD.
-  Non-blocking, but lets you triage setup issues before showtime.
-
 ## Troubleshooting (share with students if they hit issues)
 
-| Symptom | Fix |
-|---|---|
-| `kubectl: command not found` | `brew install kubectl` (mac) or follow `SETUP.md` §1. |
-| `error: KUBECONFIG environment variable not set` | `export KUBECONFIG=/path/to/k8s-bootcamp-guittonco-2026-06-kubeconfig.yaml`; persist in `~/.zshrc`. |
-| `Unable to connect to the server: dial tcp ... i/o timeout` | Network/VPN/firewall blocking 443 to the DO control plane. Switch network, try again. |
-| `forbidden: User "..." cannot create resource ... in namespace "default"` | You're using the wrong namespace. `kubectl get ns \| grep <your-handle>` should list your pre-created namespaces; deploy with `-n web-<handle>`. |
-| Lens shows "No clusters added" | File → Add Cluster → from kubeconfig → point at the downloaded file. Multi-kubeconfig is supported. |
-| Pod `Pending` forever | Likely `ResourceQuota` exceeded. `kubectl -n <ns> describe quota` shows usage; `kubectl -n <ns> describe pod <pod>` shows the actual reason. |
-| Pod `ImagePullBackOff` for your own image | Image not pushed, or package is private. `gh` → Your Packages → Settings → Public. Or check arch — `linux/amd64`, not arm64. |
-| Pod `CrashLoopBackOff` | App is exiting. `kubectl -n <ns> logs <pod> --previous` to read the last crashed container's logs. |
+| Symptom                                                                   | Fix                                                                                                                                              |
+| ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `kubectl: command not found`                                              | `brew install kubectl` (mac) or follow `SETUP.md` §1.                                                                                            |
+| `error: KUBECONFIG environment variable not set`                          | `export KUBECONFIG=/path/to/k8s-bootcamp-guittonco-2026-06-kubeconfig.yaml`; persist in `~/.zshrc`.                                              |
+| `Unable to connect to the server: dial tcp ... i/o timeout`               | Network/VPN/firewall blocking 443 to the DO control plane. Switch network, try again.                                                            |
+| `forbidden: User "..." cannot create resource ... in namespace "default"` | You're using the wrong namespace. `kubectl get ns \| grep <your-handle>` should show your pre-created namespace; deploy with `-n <your-handle>`. |
+| Lens shows "No clusters added"                                            | File → Add Cluster → from kubeconfig → point at the downloaded file. Multi-kubeconfig is supported.                                              |
+| Pod `Pending` forever                                                     | Likely `ResourceQuota` exceeded. `kubectl -n <ns> describe quota` shows usage; `kubectl -n <ns> describe pod <pod>` shows the actual reason.     |
+| Pod `ImagePullBackOff` for your own image                                 | Image not pushed, or package is private. `gh` → Your Packages → Settings → Public. Or check arch — `linux/amd64`, not arm64.                     |
+| Pod `CrashLoopBackOff`                                                    | App is exiting. `kubectl -n <ns> logs <pod> --previous` to read the last crashed container's logs.                                               |
 
 ---
 

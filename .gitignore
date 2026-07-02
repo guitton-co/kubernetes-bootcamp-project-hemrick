@@ -17,7 +17,11 @@ logs/
 # Local kubeconfigs / secrets — never commit these
 k3s.yaml
 kubeconfig*
+*kubeconfig*.yaml
 *.pem
+
+# Claude Code working directory
+.claude/
 
 # DuckDB / data scratch
 *.duckdb

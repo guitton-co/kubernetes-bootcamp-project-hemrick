@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 #
-# Pre-create per-student namespaces on the shared cohort cluster and apply
-# a ResourceQuota + LimitRange to each. Run once when all GitHub handles
-# are collected (after the prerequisite email replies land).
+# Pre-create one namespace per student on the shared cohort cluster and apply
+# a ResourceQuota + LimitRange to it. Namespace name = GitHub handle
+# (lowercased). Students put ALL their workloads (web, nextjs, cron, project,
+# troubleshooting) into that single namespace.
 #
 # Usage:
 #   ./scripts/init-cohort-namespaces.sh handle1 handle2 handle3 ...
@@ -19,18 +20,15 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 QUOTA_FILE="${SCRIPT_DIR}/../apps/resource-quota/quota.yaml"
 
-# Namespaces every student gets pre-created. Add more here if needed.
-NAMESPACES=("web" "nextjs" "cron" "troubleshooting" "project")
-
 for handle in "$@"; do
-  for ns in "${NAMESPACES[@]}"; do
-    full="${ns}-${handle}"
-    echo "==> ${full}"
-    kubectl create namespace "${full}" --dry-run=client -o yaml | kubectl apply -f -
-    kubectl -n "${full}" apply -f "${QUOTA_FILE}"
-  done
+  # K8s namespace names must be RFC 1123 (lowercase). GitHub handles are
+  # case-insensitive, so normalise to lowercase here.
+  ns="$(echo "${handle}" | tr '[:upper:]' '[:lower:]')"
+  echo "==> ${ns}"
+  kubectl create namespace "${ns}" --dry-run=client -o yaml | kubectl apply -f -
+  kubectl -n "${ns}" apply -f "${QUOTA_FILE}"
 done
 
 echo
 echo "Done. Created namespaces + ResourceQuota for: $*"
-echo "Verify with: kubectl get ns | grep -E '$(IFS=\|; echo "$*")'"
+echo "Verify with: kubectl get ns | grep -Ei '$(IFS=\|; echo "$*")'"

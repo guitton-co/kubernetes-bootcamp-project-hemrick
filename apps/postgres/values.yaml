@@ -29,3 +29,14 @@ resources: {}
   #   memory: 256Mi
   # limits:
   #   memory: 512Mi
+
+# Schedule Postgres onto the dedicated airflow-pool node (tainted, labelled by
+# doctl node-pool create --label dedicated=airflow --taint dedicated=airflow:NoSchedule).
+# Keeps the tiny s-1vcpu-2gb student nodes free for student workloads.
+nodeSelector:
+  dedicated: airflow
+tolerations:
+  - key: dedicated
+    operator: Equal
+    value: airflow
+    effect: NoSchedule

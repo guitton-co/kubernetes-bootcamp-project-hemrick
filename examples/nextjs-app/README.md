@@ -27,16 +27,15 @@ Then set that image name in `k8s/deployment.yaml`.
 ## Deploy
 
 ```sh
-export HANDLE=<your-github-handle>
-kubectl create namespace nextjs-$HANDLE
-kubectl -n nextjs-$HANDLE apply -f k8s/
-kubectl -n nextjs-$HANDLE get pods
+export HANDLE=<your-github-handle-lowercased>
+kubectl -n $HANDLE apply -f k8s/
+kubectl -n $HANDLE get pods
 ```
 
 ## Reach it
 
 ```sh
-kubectl -n nextjs-$HANDLE port-forward svc/nextjs 3000:80
+kubectl -n $HANDLE port-forward svc/nextjs 3000:80
 # open http://localhost:3000
 ```
 

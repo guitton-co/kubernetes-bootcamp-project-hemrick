@@ -9,14 +9,14 @@ the Slack channel; setup snags are exactly what it's for.
 
 ## Access — get these first
 
-| What | Link | Done |
-|---|---|---|
-| Slack channel (Q&A + support) | _<invite link>_ | ☐ |
-| GitHub Classroom assignment (your fork) | _<classroom link>_ | ☐ |
-| Payment (€149, Qonto) | _<payment link>_ | ☐ |
-| Live session slots (2 × 30 min, Google Meet) | _<calendar link>_ | ☐ |
-| Shared cluster kubeconfig (attached to this email) | `k8s-bootcamp-guittonco-2026-06-kubeconfig.yaml` | ☐ |
-| Session recordings (Google Drive) | _<drive folder URL>_ | — |
+| What                                               | Link                                                       | Done |
+| -------------------------------------------------- | ---------------------------------------------------------- | ---- |
+| Slack channel (Q&A + support)                      | https://guittonco-bootcamps.slack.com/archives/C0BCZE98QBU | ☐    |
+| GitHub Classroom assignment (your fork)            | https://classroom.github.com/a/0VXJ7CKH                    | ☐    |
+| Payment (€149, Qonto)                              | _<payment link>_                                           | ☐    |
+| Live session slots (2 × 30 min, Google Meet)       | _<calendar link>_                                          | ☐    |
+| Shared cluster kubeconfig (attached to this email) | `k8s-bootcamp-guittonco-2026-06-kubeconfig.yaml`           | ☐    |
+| Session recordings (Google Drive)                  | _<drive folder URL>_                                       | —    |
 
 _(Fill the links in before sending.)_
 
@@ -35,8 +35,9 @@ _(Fill the links in before sending.)_
    kubectl get nodes        # should show 3 Ready nodes
    ```
    **Namespace rule (important):** the cluster is shared with the rest of the
-   cohort. Every namespace you create must be suffixed with your GitHub handle
-   (`web-<handle>`, `data-<handle>`, etc.) — see Session 1.
+   cohort. You have **one pre-created namespace** = your GitHub handle
+   (lowercased). All your workloads go there. Don't create other namespaces
+   and don't touch anyone else's — see Session 1.
 4. **Connect a visual IDE** — [`SETUP.md`](SETUP.md) §3 (FreeLens recommended).
    Point it at the same kubeconfig.
 5. **Replace `<your-username>`** in the three files flagged in the repo README
@@ -46,7 +47,7 @@ _(Fill the links in before sending.)_
 
 ```sh
 kubectl get nodes                          # 3 Ready nodes on the shared cluster
-kubectl get ns | grep <your-github-handle> # nothing yet — you'll create your own in Session 1
+kubectl get ns | grep <your-github-handle> # your namespace (lowercased handle)
 ```
 
 …and you can see the cluster in FreeLens/Lens.
