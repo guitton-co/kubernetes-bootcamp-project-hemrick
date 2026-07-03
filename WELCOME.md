@@ -40,14 +40,17 @@ _(Fill the links in before sending.)_
    and don't touch anyone else's — see Session 1.
 4. **Connect a visual IDE** — [`SETUP.md`](SETUP.md) §3 (FreeLens recommended).
    Point it at the same kubeconfig.
-5. **Replace `<your-username>`** in the three files flagged in the repo README
-   (your fork's gitSync repo and the two app images).
+5. **You do NOT run `helmfile sync` locally.** Airflow + Postgres are
+   already deployed on the shared cluster in the `data` namespace. Verify
+   with `kubectl -n data get pods` — you should see them Running. You
+   consume the shared instance; you do not redeploy it.
 
 ## You're ready when
 
 ```sh
-kubectl get nodes                          # 3 Ready nodes on the shared cluster
+kubectl get nodes                          # 4 nodes Ready on the shared cluster
 kubectl get ns | grep <your-github-handle> # your namespace (lowercased handle)
+kubectl -n data get pods                   # airflow-* + postgres pods Running
 ```
 
 …and you can see the cluster in FreeLens/Lens.
