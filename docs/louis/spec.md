@@ -44,9 +44,9 @@ tedious:
   (`kubectl -n data exec deploy/postgres -- psql -U airflow -d airflow -c 'CREATE DATABASE instacart;'`)
   and point dbt at it via `type: postgres`.
 - **DuckDB** — file-based, mount a PVC in your `hemrick` namespace, dbt
-  writes to `warehouse.duckdb`. Zero external deps. Reference config in
-  `docs/louis/2026-07-04-s2-prep/03-sqlmesh/` (that's on Louis's private
-  branch in the template repo — I can share the file if you want).
+  writes to `warehouse.duckdb`. Zero external deps. I built a reference
+  SQLMesh-on-DuckDB CronJob during S2 prep; ping me on Slack and I'll
+  drop the manifests + `config.yaml` into a Gist.
 
 Either would work with what you already have; BQ is fine.
 
@@ -73,10 +73,8 @@ for ops visibility).
 
 ### "Deploying nao"
 
-Already done, end-to-end, during Session 2 prep. Full notes here (in the
-template repo on the main branch, not gitignored):
-`docs/louis/2026-07-04-s2-prep/04-nao/` — actually that's gitignored, but I
-can share the file directly on Slack when you're ready. TL;DR of what
+Already done, end-to-end, during Session 2 prep. I'll share the working
+manifests + Azure OpenAI wiring on Slack when you get there. TL;DR of what
 worked:
 
 - Single container `getnao/nao:latest`, 1 Deployment + Service + Secret.
