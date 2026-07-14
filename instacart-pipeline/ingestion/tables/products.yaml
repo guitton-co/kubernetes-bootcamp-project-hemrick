@@ -1,0 +1,29 @@
+table:
+  name: products
+  source:
+    file: products.csv
+    format: CSV
+    bucket_uri: gs://instacard-data-emeric/instacart_raw/products.csv
+    has_header: true
+    encoding: UTF-8
+  bigquery:
+    dataset: raw_instacart
+    table: raw_products
+    write_disposition: WRITE_TRUNCATE
+  columns:
+    - name: product_id
+      type: INTEGER
+      mode: REQUIRED
+      description: "Identifiant unique du produit."
+    - name: product_name
+      type: STRING
+      mode: NULLABLE
+      description: "Nom du produit."
+    - name: aisle_id
+      type: INTEGER
+      mode: NULLABLE
+      description: "Référence vers aisles.aisle_id."
+    - name: department_id
+      type: INTEGER
+      mode: NULLABLE
+      description: "Référence vers departments.department_id."

@@ -1,0 +1,41 @@
+table:
+  name: orders
+  source:
+    file: orders.csv
+    format: CSV
+    bucket_uri: gs://instacard-data-emeric/instacart_raw/orders.csv
+    has_header: true
+    encoding: UTF-8
+  bigquery:
+    dataset: raw_instacart
+    table: raw_orders
+    write_disposition: WRITE_TRUNCATE
+  columns:
+    - name: order_id
+      type: INTEGER
+      mode: REQUIRED
+      description: "Identifiant unique de la commande."
+    - name: user_id
+      type: INTEGER
+      mode: NULLABLE
+      description: "Identifiant du client ayant passé la commande."
+    - name: eval_set
+      type: STRING
+      mode: NULLABLE
+      description: "Segment d'évaluation du dataset (prior, train, test)."
+    - name: order_number
+      type: INTEGER
+      mode: NULLABLE
+      description: "Numéro d'ordre de la commande dans l'historique du client."
+    - name: order_dow
+      type: INTEGER
+      mode: NULLABLE
+      description: "Jour de la semaine de la commande (0-6)."
+    - name: order_hour_of_day
+      type: INTEGER
+      mode: NULLABLE
+      description: "Heure de la journée de la commande (0-23)."
+    - name: days_since_prior_order
+      type: FLOAT
+      mode: NULLABLE
+      description: "Nombre de jours depuis la commande précédente du client (null si première commande)."

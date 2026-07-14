@@ -1,0 +1,43 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: instacart-pipeline
+  labels:
+    app: instacart-pipeline
+spec:
+  schedule: "0 6 * * *" # tous les jours à 6h UTC — ajuster selon besoin
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      ttlSecondsAfterFinished: 600
+      activeDeadlineSeconds: 1800
+      template:
+        metadata:
+          labels:
+            app: instacart-pipeline
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: instacart-pipeline
+              image: ghcr.io/hemrick/instacart-pipeline:latest
+              env:
+                - name: GCP_SERVICE_ACCOUNT_LOAD_AND_DBT
+                  value: /secrets/gcp/service-account.json
+              volumeMounts:
+                - name: gcp-credentials
+                  mountPath: /secrets/gcp
+                  readOnly: true
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  cpu: 500m
+                  memory: 512Mi
+          volumes:
+            - name: gcp-credentials
+              secret:
+                secretName: instacart-gcp-credentials

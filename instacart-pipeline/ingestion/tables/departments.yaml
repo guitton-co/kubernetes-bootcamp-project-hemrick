@@ -1,0 +1,21 @@
+table:
+  name: departments
+  source:
+    file: departments.csv
+    format: CSV
+    bucket_uri: gs://instacard-data-emeric/instacart_raw/departments.csv
+    has_header: true
+    encoding: UTF-8
+  bigquery:
+    dataset: raw_instacart
+    table: raw_departments
+    write_disposition: WRITE_TRUNCATE
+  columns:
+    - name: department_id
+      type: INTEGER
+      mode: REQUIRED
+      description: "Identifiant unique du département (rayon)."
+    - name: department
+      type: STRING
+      mode: NULLABLE
+      description: "Nom du département (ex: 'dairy eggs')."

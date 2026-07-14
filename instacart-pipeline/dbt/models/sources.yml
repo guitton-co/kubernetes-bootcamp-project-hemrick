@@ -1,0 +1,104 @@
+version: 2
+
+sources:
+  - name: raw_instacart
+    database: analytics-with-emeric
+    schema: raw_instacart
+    tables:
+      - name: raw_aisles
+        columns:
+          - name: aisle_id
+            tests:
+              - unique
+              - not_null
+          - name: aisle
+            tests:
+              - not_null
+
+      - name: raw_departments
+        columns:
+          - name: department_id
+            tests:
+              - unique
+              - not_null
+          - name: department
+            tests:
+              - not_null
+
+      - name: raw_products
+        columns:
+          - name: product_id
+            tests:
+              - unique
+              - not_null
+          - name: aisle_id
+            tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    to: source('raw_instacart', 'raw_aisles')
+                    field: aisle_id
+          - name: department_id
+            tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    to: source('raw_instacart', 'raw_departments')
+                    field: department_id
+
+      - name: raw_orders
+        columns:
+          - name: order_id
+            tests:
+              - unique
+              - not_null
+          - name: user_id
+            tests:
+              - not_null
+          - name: eval_set
+            tests:
+              - accepted_values:
+                  arguments:
+                    values: ['prior', 'train', 'test']
+
+      - name: raw_order_products_prior
+        tests:
+          - dbt_utils.unique_combination_of_columns:
+              arguments:
+                combination_of_columns: [order_id, product_id]
+        columns:
+          - name: order_id
+            tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    to: source('raw_instacart', 'raw_orders')
+                    field: order_id
+          - name: product_id
+            tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    to: source('raw_instacart', 'raw_products')
+                    field: product_id
+
+      - name: raw_order_products_train
+        tests:
+          - dbt_utils.unique_combination_of_columns:
+              arguments:
+                combination_of_columns: [order_id, product_id]
+        columns:
+          - name: order_id
+            tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    to: source('raw_instacart', 'raw_orders')
+                    field: order_id
+          - name: product_id
+            tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    to: source('raw_instacart', 'raw_products')
+                    field: product_id

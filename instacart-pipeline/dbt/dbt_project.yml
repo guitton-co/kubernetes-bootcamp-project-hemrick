@@ -1,0 +1,15 @@
+name: 'instacart_analytics'
+version: '1.0.0'
+config-version: 2
+
+profile: 'instacart_analytics'
+
+model-paths: ["models"]
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
+packages-install-path: "dbt_packages"
+
+models:
+  instacart_analytics:
+    gold_instacart:
+      +materialized: table

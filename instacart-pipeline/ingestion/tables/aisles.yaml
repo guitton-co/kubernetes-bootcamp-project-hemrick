@@ -1,0 +1,21 @@
+table:
+  name: aisles
+  source:
+    file: aisles.csv
+    format: CSV
+    bucket_uri: gs://instacard-data-emeric/instacart_raw/aisles.csv
+    has_header: true
+    encoding: UTF-8
+  bigquery:
+    dataset: raw_instacart
+    table: raw_aisles
+    write_disposition: WRITE_TRUNCATE
+  columns:
+    - name: aisle_id
+      type: INTEGER
+      mode: REQUIRED
+      description: "Identifiant unique de l'allée (aisle) du magasin."
+    - name: aisle
+      type: STRING
+      mode: NULLABLE
+      description: "Nom de l'allée (ex: 'fresh vegetables')."

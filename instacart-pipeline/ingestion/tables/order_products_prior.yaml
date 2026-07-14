@@ -1,0 +1,29 @@
+table:
+  name: order_products_prior
+  source:
+    file: order_products__prior.csv
+    format: CSV
+    bucket_uri: gs://instacard-data-emeric/instacart_raw/order_products__prior.csv
+    has_header: true
+    encoding: UTF-8
+  bigquery:
+    dataset: raw_instacart
+    table: raw_order_products_prior
+    write_disposition: WRITE_TRUNCATE
+  columns:
+    - name: order_id
+      type: INTEGER
+      mode: REQUIRED
+      description: "Référence vers orders.order_id."
+    - name: product_id
+      type: INTEGER
+      mode: REQUIRED
+      description: "Référence vers products.product_id."
+    - name: add_to_cart_order
+      type: INTEGER
+      mode: NULLABLE
+      description: "Ordre d'ajout du produit au panier."
+    - name: reordered
+      type: BOOLEAN
+      mode: NULLABLE
+      description: "Indique si le produit a déjà été commandé par le client par le passé."

@@ -1,0 +1,12 @@
+instacart_analytics:
+  target: prod
+  outputs:
+    prod:
+      type: bigquery
+      method: service-account
+      project: "{{ env_var('DBT_BQ_PROJECT', 'analytics-with-emeric') }}"
+      dataset: "{{ env_var('DBT_BQ_DATASET', 'gold_instacart') }}"
+      location: "{{ env_var('DBT_BQ_LOCATION', 'US') }}"
+      keyfile: "{{ env_var('GCP_SERVICE_ACCOUNT_LOAD_AND_DBT') }}"
+      threads: 4
+      job_execution_timeout_seconds: 300
