@@ -1,12 +1,9 @@
 # Louis's feedback — Instacart / dbt / nao project
 
 **Date:** 2026-07-14
-**Scope:** review of your spec (from `2026-07-13-spec.md`) + first pass on
-the `instacart-pipeline/` code you pushed.
+**Scope:** review of your spec (from Slack thread)
 
-Merging this PR is optional — it's a feedback artifact, not code you need.
-Do skim the "Answers to your Slack questions" section though; those unblock
-your Step 3 (remote cluster deploy).
+Merging this PR is optional — it's a feedback mechanism, not code you need.
 
 ## Answers to your Slack questions
 
@@ -38,6 +35,7 @@ Good.
 
 **Two alternative paths available on the cohort cluster** if BQ becomes
 tedious:
+
 - **Shared Postgres in the `data` namespace** — I already run it for
   Airflow, cross-ns Service DNS =
   `postgres-service.data.svc.cluster.local:5432`. Create your own DB in it
@@ -53,7 +51,7 @@ Either would work with what you already have; BQ is fine.
 ### "Run on CloudRun would be enough (simpler and cheapest?)"
 
 **Yes, CloudRun IS the right answer for prod if you optimize for cost +
-simplicity.** The bootcamp is deliberately about the layer *below* that. Two
+simplicity.** The bootcamp is deliberately about the layer _below_ that. Two
 choices on the K8s side:
 
 1. **CronJob** (what you did) — good. Direct translation of "scheduled
@@ -86,6 +84,7 @@ worked:
   `type: bigquery`. Nao ships a first-class BQ connector.
 
 For your project the wiring would be:
+
 - Your `instacart-pipeline` CronJob writes `gold_instacart.product_performance`
   to BQ (done).
 - Deploy Nao in the same namespace, config context to declare
