@@ -97,114 +97,12 @@ For your project the wiring would be:
 
 Ping me on Slack when ready to add Nao; I'll paste the manifests.
 
-## Feedback on your `instacart-pipeline/` code
+## Code review
 
-Reviewed `a77c32e` and `0adf2eb`. Overall shape is solid — three-tier README
-(local → docker-desktop → remote cluster) is exactly the right progression.
-Six nits below in decreasing order of importance.
-
-### 1. Bump `resources.limits.memory` before you trust the schedule
-
-`instacart-pipeline/k8s/cronjob.yaml:40` — `memory: 512Mi` limit. dbt +
-BigQuery client + your Python loader can spike past that once you hit real
-Kaggle-scale data. **Watch the first manual run:**
-
-```sh
-kubectl -n hemrick top pod -l app=instacart-pipeline
-# OR in Lens/FreeLens → Workloads → Pods → your Pod → Metrics
-```
-
-If you see anything like `OOMKilled` in `kubectl describe pod`, bump to
-`1Gi` or `2Gi`. Silent OOMs during scheduled runs at 6am UTC = bad debug
-UX.
-
-### 2. Mutable `:latest` tag will bite you eventually
-
-`instacart-pipeline/k8s/cronjob.yaml:26` — `image:
-ghcr.io/hemrick/instacart-pipeline:latest`. Once you push a new build with
-the same tag, existing Pods still run the OLD image (nodes cache by tag).
-Forcing a re-pull needs `imagePullPolicy: Always` (K8s default for
-`:latest`, so you're safe HERE, but the moment you tag `:v1` you lose the
-default).
-
-**Better long-term:** tag with a git SHA on every push.
-
-```sh
-TAG=$(git rev-parse --short HEAD)
-docker buildx build --platform linux/amd64 \
-  -t ghcr.io/hemrick/instacart-pipeline:$TAG --push .
-kubectl -n hemrick set image cronjob/instacart-pipeline \
-  instacart-pipeline=ghcr.io/hemrick/instacart-pipeline:$TAG
-```
-
-Now `kubectl describe pod` tells you exactly which build shipped. I burned
-15 min during Tambo prep to a `:s2-prep` tag pointing at two different
-builds — the same trap.
-
-### 3. Container runs as root
-
-`instacart-pipeline/Dockerfile` — no `USER` directive → runs as root. The
-cohort cluster's PodSecurity admission isn't strict yet, but a real prod
-cluster would reject the Pod. Add before `ENTRYPOINT`:
-
-```dockerfile
-RUN useradd -u 1000 -m app && chown -R app /app
-USER app
-```
-
-Small change, sets you up for stricter PSA levels later.
-
-### 4. "Attempt all, fail once at end" needs a docstring line
-
-`instacart-pipeline/ingestion/load_to_bigquery.py:76-88` — try/except per
-table, log, continue, `return 1` if any failed. With `set -euo pipefail` in
-`run_pipeline.sh`, exit=1 stops the shell before dbt runs.
-
-This is a deliberate design ("load ALL tables, see the full summary, THEN
-fail"). Not obvious from the code alone. Add a one-line docstring at the
-top of `main()`:
-
-```python
-def main() -> int:
-    """Attempt to load every table; log failures; exit non-zero if any table failed."""
-```
-
-Or invert the pattern (fail-fast, drop the try/except). Either is
-defensible — pick one deliberately.
-
-### 5. The README `sed` swap works, but there's a native alternative
-
-`instacart-pipeline/README.md:104-106` — you do
-`kubectl create job --from=cronjob/... --dry-run=client -o yaml | sed 's|:latest|:local-test|' | kubectl apply -f -`.
-
-Works. Cleaner:
-
-```sh
-kubectl -n hemrick create job instacart-pipeline-local-test \
-  --from=cronjob/instacart-pipeline
-
-kubectl -n hemrick set image job/instacart-pipeline-local-test \
-  instacart-pipeline=ghcr.io/hemrick/instacart-pipeline:local-test
-```
-
-`set image` is idempotent + doesn't need string manipulation.
-
-### 6. `activeDeadlineSeconds: 1800` = benchmark first
-
-`instacart-pipeline/k8s/cronjob.yaml:15` — 30 min. Fine unless a full Kaggle
-load + dbt runs take longer. Once you have one green real run in the logs,
-add a comment above this line with the actual observed duration + a 2x
-buffer.
-
-## Nice things I noticed
-
-- Dockerfile uses `uv sync --frozen --no-install-project --no-dev` then a
-  second sync after COPY — that's textbook uv layer caching.
-- `run_pipeline.sh` uses `set -euo pipefail` — right default.
-- README section 3.3 explains the private-package + `imagePullSecrets`
-  pattern clearly. Cohort students will find this and copy it.
-- You spelled out the `--platform linux/amd64` reason (Apple Silicon → amd64
-  cluster). Saves the next person a 30-min head-scratch.
+See `docs/louis/code_review.md` for the line-by-line review of your
+`instacart-pipeline/` commits. Same content is also posted as inline PR
+comments on the review PR (base = template starter, head = `main`) so you
+can respond in context.
 
 ## Next step suggestion
 
