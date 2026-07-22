@@ -1,0 +1,24 @@
+# Optionnel. Le chemin d'accès par défaut est `kubectl port-forward`
+# (voir README.md) — n'applique ce fichier que si un Ingress controller est
+# confirmé sur le cluster de la cohorte.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nao
+  labels:
+    app: nao
+spec:
+  ingressClassName: nginx
+  rules:
+    # Host préfixé par le namespace : cluster partagé, "nao.localhost" tout
+    # court entrerait en conflit avec le même Ingress créé par d'autres élèves.
+    - host: hemrick-nao.localhost
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: nao
+                port:
+                  number: 80

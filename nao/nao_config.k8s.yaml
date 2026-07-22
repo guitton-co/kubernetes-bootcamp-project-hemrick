@@ -1,0 +1,25 @@
+# Configuration documentation:
+# https://docs.getnao.io/nao-agent/context-builder/configuration#nao_config-yaml
+#
+# K8s variant (DO cohort cluster): unlike Cloud Run, there is no attached
+# service-account ADC here, so BigQuery auth needs an explicit key file.
+# The Deployment mounts the same GCP key already used by instacart-pipeline
+# (Secret instacart-gcp-credentials) at /secrets/gcp/service-account.json.
+
+project_name: instacart-analytics
+
+databases:
+  - name: bigquery_prod
+    type: bigquery
+    project_id: analytics-with-emeric
+    dataset_id: gold_instacart
+    location: US
+    credentials_path: /secrets/gcp/service-account.json
+    max_query_size: 5 # GB dry-run cap before a query executes; tune as needed
+
+llm:
+  provider: openai
+  # Injected via the nao-secrets K8s Secret (see nao/k8s/deployment.yaml).
+  api_key: "{{ env('OPENAI_API_KEY') }}"
+
+repos: []

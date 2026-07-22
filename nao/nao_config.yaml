@@ -1,0 +1,24 @@
+# Configuration documentation:
+# https://docs.getnao.io/nao-agent/context-builder/configuration#nao_config-yaml
+
+project_name: instacart-analytics
+
+databases:
+  - name: bigquery_prod
+    type: bigquery
+    # Matches the dbt profiles.yml (dbt/profiles.yml) defaults for this project.
+    project_id: analytics-with-emeric
+    dataset_id: gold_instacart
+    location: US
+    # Reuses the same service-account key as ingestion/dbt (see .env / .env.example).
+    # GCP_SERVICE_ACCOUNT_LOAD_AND_DBT is repo-root-relative (e.g. "./service-account.json");
+    # nao always runs with this nao/ folder as its cwd, so prefix with "../" to reach the repo root.
+    credentials_path: "../{{ env('GCP_SERVICE_ACCOUNT_LOAD_AND_DBT') }}"
+    max_query_size: 5 # GB dry-run cap before a query executes; tune as needed
+
+llm:
+  provider: openai
+  # Add OPENAI_API_KEY to the repo-root .env (see .env.example) — never hardcode it here.
+  api_key: "{{ env('OPENAI_API_KEY') }}"
+
+repos: []

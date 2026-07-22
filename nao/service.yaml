@@ -1,0 +1,66 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: nao-chat
+  labels:
+    cloud.googleapis.com/location: us-central1
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/maxScale: '1'
+        run.googleapis.com/execution-environment: gen2
+        run.googleapis.com/startup-cpu-boost: 'true'
+    spec:
+      containerConcurrency: 80
+      timeoutSeconds: 300
+      serviceAccountName: bigquery-load-dbt@analytics-with-emeric.iam.gserviceaccount.com
+      containers:
+      - name: nao-chat
+        image: us-central1-docker.pkg.dev/analytics-with-emeric/nao/nao-chat:latest
+        ports:
+        - containerPort: 5005
+          name: http1
+        env:
+        - name: NAO_DEFAULT_PROJECT_PATH
+          value: /app/project
+        - name: BETTER_AUTH_URL
+          value: https://nao-chat-629954180478.us-central1.run.app
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: nao-openai-api-key
+              key: latest
+        - name: BETTER_AUTH_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: nao-better-auth-secret
+              key: latest
+        - name: DB_URI
+          valueFrom:
+            secretKeyRef:
+              name: nao-db-uri
+              key: latest
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+        startupProbe:
+          tcpSocket:
+            port: 5005
+          periodSeconds: 240
+          failureThreshold: 1
+          timeoutSeconds: 240
+      - name: cloud-sql-proxy
+        image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:latest
+        args:
+        - "--structured-logs"
+        - "--port=5432"
+        - "analytics-with-emeric:us-central1:nao-db"
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
+  traffic:
+  - latestRevision: true
+    percent: 100

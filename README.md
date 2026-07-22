@@ -45,6 +45,19 @@ Questions between sessions go in the dedicated Slack channel.
 Both are starting points to copy and bend toward your own project — not the
 project itself.
 
+## This student's project(s)
+
+Two independent things run in the `hemrick` namespace — not to be confused
+with the worked examples above. They share the same GCP project
+(`analytics-with-emeric`) and the same service-account credential, but are
+otherwise fully separate deployment workflows (different registry, different
+Kubernetes workload type).
+
+| Project                                       | What                                                                                          | Workload type                        | Registry               | Docs                          |
+| ---------------------------------------------- | ----------------------------------------------------------------------------------------------- | -------------------------------------- | ------------------------- | -------------------------------- |
+| [`instacart-pipeline/`](instacart-pipeline/) | Instacart (Kaggle) → BigQuery ingestion, dbt source tests, `gold_instacart.product_performance` datamart | Scheduled `CronJob` (run to completion) | GCP Artifact Registry    | [`instacart-pipeline/README.md`](instacart-pipeline/README.md) |
+| [`nao/`](nao/)                               | AI data-analyst chat agent ([getnao.io](https://getnao.io)) over `gold_instacart`, auth/session data in Cloud SQL Postgres | Long-running `Deployment` + `Service`   | GCP Artifact Registry    | [`nao/README.md`](nao/README.md) |
+
 ## Quickstart (data stack)
 
 With a cluster running and tools installed (see [`SETUP.md`](SETUP.md)):
@@ -80,5 +93,7 @@ the official community chart, because some things you shouldn't write yourself.
 │   ├── data-pipeline/         # Airflow + your DAGs
 │   ├── web-service/           # FastAPI + Deployment/Service/Ingress
 │   └── nextjs-app/            # Next.js (standalone) + Deployment/Service/Ingress
+├── instacart-pipeline/        # this student's project — CronJob, GHCR
+├── nao/                       # this student's project — Deployment/Service, GCP Artifact Registry
 └── docs/lens.md               # the visual debugging cheatsheet
 ```

@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nao
+  labels:
+    app: nao
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nao
+  template:
+    metadata:
+      labels:
+        app: nao
+    spec:
+      imagePullSecrets:
+        - name: gar-pull-secret
+      containers:
+        - name: nao-chat
+          image: us-central1-docker.pkg.dev/analytics-with-emeric/nao/nao-chat:k8s-latest
+          ports:
+            - name: http
+              containerPort: 5005
+          env:
+            - name: NAO_DEFAULT_PROJECT_PATH
+              value: /app/project
+            - name: BETTER_AUTH_URL
+              # Must match however nao is actually reached (better-auth ties
+              # cookies/redirects to this URL). Default assumes
+              # `kubectl port-forward svc/nao 8080:80` — update + redeploy if
+              # an Ingress with a stable hostname is set up instead.
+              value: http://localhost:8080
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: nao-secrets
+                  key: OPENAI_API_KEY
+            - name: BETTER_AUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: nao-secrets
+                  key: BETTER_AUTH_SECRET
+            - name: DB_URI
+              valueFrom:
+                secretKeyRef:
+                  name: nao-secrets
+                  key: DB_URI
+          volumeMounts:
+            - name: gcp-credentials
+              mountPath: /secrets/gcp
+              readOnly: true
+          startupProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 10
+            failureThreshold: 24 # ~4min, matches Cloud Run's 240s startup allowance
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+        - name: cloud-sql-proxy
+          image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:latest
+          args:
+            - "--structured-logs"
+            - "--port=5432"
+            - "--credentials-file=/secrets/gcp/service-account.json"
+            - "analytics-with-emeric:us-central1:nao-db"
+          volumeMounts:
+            - name: gcp-credentials
+              mountPath: /secrets/gcp
+              readOnly: true
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      volumes:
+        - name: gcp-credentials
+          secret:
+            secretName: instacart-gcp-credentials

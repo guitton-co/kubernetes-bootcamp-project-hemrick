@@ -73,16 +73,27 @@ the repo to build or deploy. Docs and code comments are in French.
 ### Deploying / operating (namespace `hemrick`)
 
 ```sh
-# 1. Build + push (amd64 required — cluster nodes are amd64)
+# 1. Build + push (amd64 required — cluster nodes are amd64). Same GCP
+# Artifact Registry repo used by the earlier Cloud Run deployment.
+gcloud auth configure-docker us-central1-docker.pkg.dev   # once
 docker buildx build --platform linux/amd64 \
-  -t ghcr.io/hemrick/instacart-pipeline:latest --push .
-# then make the ghcr package public (Package settings → Change visibility)
+  -t us-central1-docker.pkg.dev/analytics-with-emeric/instacart-pipeline/ingestion:latest \
+  --push .
 
-# 2. Secret with the GCP key (never commit the key itself)
+# 2. Pull secret so the cluster (no native GCP identity) can pull from
+# Artifact Registry — skip if gar-pull-secret already exists in hemrick
+# (shared with the nao/ deployment, same registry host)
+kubectl create secret docker-registry gar-pull-secret \
+  --docker-server=us-central1-docker.pkg.dev \
+  --docker-username=_json_key \
+  --docker-password="$(cat /path/to/key.json)" \
+  --docker-email=you@example.com -n hemrick
+
+# 3. Secret with the GCP key (never commit the key itself)
 kubectl create secret generic instacart-gcp-credentials \
   --from-file=service-account.json=/path/to/key.json -n hemrick
 
-# 3. Deploy the CronJob
+# 4. Deploy the CronJob
 kubectl -n hemrick apply -f k8s/cronjob.yaml
 
 # 4. Trigger a run without waiting for the schedule
@@ -112,6 +123,9 @@ uv run dbt run --project-dir dbt --profiles-dir dbt --select product_performance
 - GCP service-account key needs: read access to the source GCS bucket
   (`gs://instacard-data-emeric/...`), read/write on `raw_instacart`,
   write on `gold_instacart`, and `roles/bigquery.jobUser` on the project.
-- Push access to `ghcr.io/hemrick` is required for the image build/push step.
+- Push access to `us-central1-docker.pkg.dev/analytics-with-emeric/instacart-pipeline`
+  (GCP Artifact Registry) is required for the image build/push step, and the
+  service account used for `gar-pull-secret` needs `roles/artifactregistry.reader`
+  on that repo.
 - The dbt tests in step 2 are a hard gate — if they fail, `gold_instacart`
   simply doesn't get (re)built for that run.

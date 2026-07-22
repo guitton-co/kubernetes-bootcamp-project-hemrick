@@ -1,0 +1,24 @@
+# Configuration documentation:
+# https://docs.getnao.io/nao-agent/context-builder/configuration#nao_config-yaml
+#
+# Production variant for Cloud Run: no credentials_path. BigQuery auth falls
+# back to Application Default Credentials, which on Cloud Run resolves
+# automatically to the service account attached to the service
+# (--service-account at deploy time) — no key file needed.
+
+project_name: instacart-analytics
+
+databases:
+  - name: bigquery_prod
+    type: bigquery
+    project_id: analytics-with-emeric
+    dataset_id: gold_instacart
+    location: US
+    max_query_size: 5 # GB dry-run cap before a query executes; tune as needed
+
+llm:
+  provider: openai
+  # Injected via Cloud Run --set-secrets (see nao/Dockerfile deployment plan).
+  api_key: "{{ env('OPENAI_API_KEY') }}"
+
+repos: []

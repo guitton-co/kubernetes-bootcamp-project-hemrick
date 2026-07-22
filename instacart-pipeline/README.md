@@ -1,106 +1,109 @@
 # instacart-pipeline
 
-Pipeline de données Instacart (Kaggle) → BigQuery, sur Kubernetes.
+Instacart (Kaggle) → BigQuery data pipeline, on Kubernetes.
 
-Repo autonome : ce dossier contient tout le code (script Python de load + projet
-dbt) et son propre `Dockerfile` — pas de dépendance à un autre repo pour build
-ou déployer.
+Self-contained repo: this folder contains all the code (Python load script +
+dbt project) and its own `Dockerfile` — no dependency on the rest of the
+repo to build or deploy.
 
-## Ce que ça fait
+## What it does
 
-Un seul conteneur, exécuté à la demande via un `CronJob` :
-1. `ingestion/load_to_bigquery.py` — charge les CSV bruts (GCS) vers BigQuery,
-   dataset `raw_instacart`, sans transformation.
-2. `dbt test --select source:raw_instacart` — tests d'intégrité sur les
-   tables brutes (unicité, not_null, clés étrangères, valeurs acceptées).
-   Si un test échoue, le pipeline s'arrête là (`set -euo pipefail` dans
+A single container, run on demand via a `CronJob`:
+1. `ingestion/load_to_bigquery.py` — loads the raw CSVs (GCS) into BigQuery,
+   `raw_instacart` dataset, no transformation.
+2. `dbt test --select source:raw_instacart` — integrity tests on the raw
+   tables (uniqueness, not_null, foreign keys, accepted values). If a test
+   fails, the pipeline stops there (`set -euo pipefail` in
    `run_pipeline.sh`).
-3. `dbt run --select product_performance` — construit le datamart
-   `gold_instacart.product_performance` (popularité/taux de réachat produit).
+3. `dbt run --select product_performance` — builds the
+   `gold_instacart.product_performance` datamart (product popularity /
+   reorder rate).
 
-Voir `dbt/models/sources.yml` et `dbt/models/gold_instacart/` pour le détail.
+See `dbt/models/sources.yml` and `dbt/models/gold_instacart/` for the
+details.
 
-Ce README couvre 3 façons de faire tourner le pipeline, du plus rapide au plus
-réaliste :
+This README covers 3 ways to run the pipeline, from fastest to most
+realistic:
 
-| # | Où | Pourquoi |
+| # | Where | Why |
 | - | -- | -------- |
-| 1 | En local avec `uv`, sans Kubernetes | Valider la logique métier (chargement + tests dbt + datamart) le plus vite possible. |
-| 2 | Sur un Kubernetes local (Docker Desktop) | Valider l'image Docker et le `CronJob` tels quels, sans dépendre d'un registre externe. |
-| 3 | Sur le cluster distant de la cohorte (namespace `hemrick`) | Déploiement réel, planifié (`schedule` du `CronJob`). |
+| 1 | Locally with `uv`, no Kubernetes | Validate the business logic (load + dbt tests + datamart) as fast as possible. |
+| 2 | On a local Kubernetes (Docker Desktop) | Validate the Docker image and the `CronJob` as-is, without depending on an external registry. |
+| 3 | On the cohort's remote cluster (namespace `hemrick`) | Real, scheduled deployment (`schedule` on the `CronJob`). |
 
-## Prérequis
+## Prerequisites
 
-- Une clé de service account GCP avec accès au bucket source, à
-  `raw_instacart` (lecture/écriture) et `gold_instacart` (écriture), ainsi que
-  `roles/bigquery.jobUser` sur le projet.
-- Accès push à `us-central1-docker.pkg.dev/analytics-with-emeric/instacart-pipeline`
-  (repo Artifact Registry, déjà créé pour l'ancien déploiement Cloud Run) —
-  utile dès la section 2. `gcloud auth configure-docker
-  us-central1-docker.pkg.dev` en local si ce n'est pas déjà fait.
-- `kubectl`, `docker`, `uv` installés en local.
-- Le SA GCP utilisé doit avoir `roles/artifactregistry.reader` sur ce repo —
-  voir section 3 pour comment le cluster distant y accède.
+- A GCP service-account key with access to the source bucket, to
+  `raw_instacart` (read/write) and `gold_instacart` (write), plus
+  `roles/bigquery.jobUser` on the project.
+- Push access to `us-central1-docker.pkg.dev/analytics-with-emeric/instacart-pipeline`
+  (Artifact Registry repo, already created for the earlier Cloud Run
+  deployment) — needed from section 2 onward. Run `gcloud auth configure-docker
+  us-central1-docker.pkg.dev` locally if not already done.
+- `kubectl`, `docker`, `uv` installed locally.
+- The GCP SA in use must have `roles/artifactregistry.reader` on this repo —
+  see section 3 for how the remote cluster gets access.
 
-## 1. Tester en local (sans cluster)
+## 1. Test locally (no cluster)
 
 ```sh
 uv sync
 
-# Créer .env (jamais commité) et pointer vers ta clé GCP
+# Create .env (never committed) and point it at your GCP key
 cp .env.example .env
-# éditer .env : GCP_SERVICE_ACCOUNT_LOAD_AND_DBT=/chemin/vers/ta-cle.json
-# (chemin absolu recommandé si la clé vit hors du repo — configuration.py
-# résout un chemin relatif par rapport à instacart-pipeline/, pas à ton cwd)
+# edit .env: GCP_SERVICE_ACCOUNT_LOAD_AND_DBT=/path/to/your-key.json
+# (an absolute path is recommended if the key lives outside the repo —
+# configuration.py resolves a relative path against instacart-pipeline/,
+# not your cwd)
 
-# dbt_utils est requis par les tests de sources.yml (unique_combination_of_columns) :
+# dbt_utils is required by the sources.yml tests (unique_combination_of_columns):
 uv run dbt deps --project-dir dbt
 
 uv run python ingestion/load_to_bigquery.py
 ```
 
-`dbt`, contrairement au script Python, ne lit pas `.env` (le chargement via
-`python-dotenv` n'a lieu que dans `ingestion/configuration.py`). Exporte la
-variable avant les commandes `dbt` :
+Unlike the Python script, `dbt` doesn't read `.env` (the `python-dotenv`
+loading only happens in `ingestion/configuration.py`). Export the variable
+before the `dbt` commands:
 
 ```sh
-export GCP_SERVICE_ACCOUNT_LOAD_AND_DBT=/chemin/vers/ta-cle.json
+export GCP_SERVICE_ACCOUNT_LOAD_AND_DBT=/path/to/your-key.json
 
 uv run dbt test --project-dir dbt --profiles-dir dbt --select "source:raw_instacart"
 uv run dbt run --project-dir dbt --profiles-dir dbt --select product_performance
 ```
 
-Si tout passe, la logique métier est validée — vérifie dans BigQuery que
-`gold_instacart.product_performance` existe et contient des lignes (triées
-par `times_ordered` décroissant, les produits populaires comme les bananes
-doivent être en tête).
+If everything passes, the business logic is validated — check in BigQuery
+that `gold_instacart.product_performance` exists and has rows (sorted by
+`times_ordered` descending, popular products like bananas should be at the
+top).
 
-## 2. Tester sur un Kubernetes local (Docker Desktop)
+## 2. Test on a local Kubernetes (Docker Desktop)
 
-But : valider que l'image Docker et le `CronJob` fonctionnent tels quels,
-sans toucher au registre distant — Docker Desktop partage le même moteur
-Docker que ton terminal, donc une image buildée en local est directement
-utilisable par son Kubernetes, sans push.
+Goal: validate that the Docker image and the `CronJob` work as-is, without
+touching the remote registry — Docker Desktop shares the same Docker engine
+as your terminal, so an image built locally is directly usable by its
+Kubernetes, no push needed.
 
 ```sh
-# Basculer sur le cluster local
+# Switch to the local cluster
 kubectl config use-context docker-desktop
 
-# Namespace local (même nom que sur le cluster distant, par cohérence)
+# Local namespace (same name as on the remote cluster, for consistency)
 kubectl create namespace hemrick --dry-run=client -o yaml | kubectl apply -f -
 
-# Build natif (pas de --platform, pas de --push), tag différent de ":latest"
-# pour que Kubernetes utilise imagePullPolicy: IfNotPresent (comportement
-# par défaut) et ne tente jamais de contacter un registre
+# Native build (no --platform, no --push), tag different from ":latest" so
+# Kubernetes uses imagePullPolicy: IfNotPresent (the default behavior) and
+# never tries to reach a registry
 docker build -t us-central1-docker.pkg.dev/analytics-with-emeric/instacart-pipeline/ingestion:local-test .
 
-# Secret GCP dans ce namespace local
+# GCP Secret in this local namespace
 kubectl create secret generic instacart-gcp-credentials \
-  --from-file=service-account.json=/chemin/vers/ta-cle.json -n hemrick
+  --from-file=service-account.json=/path/to/your-key.json -n hemrick
 
 kubectl -n hemrick apply -f k8s/cronjob.yaml
 
-# Job manuel utilisant l'image locale à la place du tag :latest
+# Manual job using the local image instead of the :latest tag
 kubectl -n hemrick create job --from=cronjob/instacart-pipeline instacart-pipeline-local-test \
   --dry-run=client -o yaml \
   | sed 's|us-central1-docker.pkg.dev/analytics-with-emeric/instacart-pipeline/ingestion:latest|us-central1-docker.pkg.dev/analytics-with-emeric/instacart-pipeline/ingestion:local-test|' \
@@ -110,52 +113,50 @@ kubectl -n hemrick get pods -w
 kubectl -n hemrick logs job/instacart-pipeline-local-test -f
 ```
 
-Observable dans Lens/FreeLens en sélectionnant le contexte `docker-desktop`,
+Observable in Lens/FreeLens by selecting the `docker-desktop` context,
 namespace `hemrick`, Workloads → Jobs/Pods.
 
-> Le `CronJob` référence `imagePullSecrets: [gar-pull-secret]` (voir
-> section 3) qui n'existe pas forcément dans ce namespace local — sans
-> importance ici : ce champ n'est consulté que si un pull réseau est
-> réellement tenté, or l'image est déjà en cache local (`IfNotPresent`).
+> The `CronJob` references `imagePullSecrets: [gar-pull-secret]` (see
+> section 3), which may not exist in this local namespace — doesn't matter
+> here: this field is only consulted if a network pull is actually
+> attempted, and the image is already cached locally (`IfNotPresent`).
 
-Nettoyage (pas de suppression automatique — voir note en section 3) :
+Cleanup (no automatic deletion — see note in section 3):
 
 ```sh
 kubectl -n hemrick delete job instacart-pipeline-local-test
 ```
 
-## 3. Déployer sur le cluster distant (cohorte, namespace `hemrick`)
+## 3. Deploy on the remote cluster (cohort, namespace `hemrick`)
 
-### 3.1 Se connecter au bon cluster
+### 3.1 Connect to the right cluster
 
 ```sh
 export KUBECONFIG=/Users/emerictrossat/code/credentials/k8s-bootcamp-guittonco-2026-06-kubeconfig.yaml
-kubectl config current-context   # doit pointer vers le cluster de la cohorte
-kubectl get ns | grep hemrick    # ton namespace existe déjà
+kubectl config current-context   # should point to the cohort cluster
+kubectl get ns | grep hemrick    # your namespace already exists
 ```
 
-### 3.2 Build + push de l'image (amd64)
+### 3.2 Build + push the image (amd64)
 
-Le cluster tourne en `amd64` — builder avec `buildx` même depuis un Mac
-Apple Silicon. Même repo Artifact Registry que l'ancien déploiement Cloud
-Run :
+The cluster runs `amd64` — build with `buildx` even from an Apple Silicon
+Mac. Same Artifact Registry repo as the earlier Cloud Run deployment:
 
 ```sh
-gcloud auth login                                          # une fois, et à refaire si le token expire (voir Dépannage)
-gcloud auth configure-docker us-central1-docker.pkg.dev     # une fois
+gcloud auth login                                          # once, and again if the token expires (see Troubleshooting)
+gcloud auth configure-docker us-central1-docker.pkg.dev     # once
 
 docker buildx build --platform linux/amd64 \
   -t us-central1-docker.pkg.dev/analytics-with-emeric/instacart-pipeline/ingestion:latest \
   --push .
 ```
 
-### 3.3 Donner au cluster l'accès à l'image (Artifact Registry)
+### 3.3 Give the cluster access to the image (Artifact Registry)
 
-**Étape ponctuelle (one-time setup)**, à faire une seule fois par projet
-GCP/service account — pas à chaque déploiement : le SA utilisé pour pull doit
-avoir `roles/artifactregistry.reader` sur le repo, sinon le pull échoue en
-`ImagePullBackOff` avec un `403 Forbidden` (même si le Secret ci-dessous est
-correct) :
+**One-time setup**, done once per GCP project/service account — not on
+every deploy: the SA used to pull must have `roles/artifactregistry.reader`
+on the repo, otherwise the pull fails with `ImagePullBackOff` and a `403
+Forbidden` (even if the Secret below is correct):
 
 ```sh
 gcloud artifacts repositories add-iam-policy-binding instacart-pipeline \
@@ -164,26 +165,25 @@ gcloud artifacts repositories add-iam-policy-binding instacart-pipeline \
   --role="roles/artifactregistry.reader"
 ```
 
-Le Node distant n'a aucune identité GCP par défaut — il lui faut aussi un
-Secret Kubernetes dédié pour s'authentifier auprès d'Artifact Registry :
+The remote Node has no GCP identity by default — it also needs a dedicated
+Kubernetes Secret to authenticate against Artifact Registry:
 
 ```sh
 kubectl create secret docker-registry gar-pull-secret \
   --docker-server=us-central1-docker.pkg.dev \
   --docker-username=_json_key \
-  --docker-password="$(cat /chemin/vers/ta-cle.json)" \
-  --docker-email=ton-email@example.com \
+  --docker-password="$(cat /path/to/your-key.json)" \
+  --docker-email=your-email@example.com \
   -n hemrick
 ```
 
-Si ce Secret existe déjà dans `hemrick` (créé pour `nao/`, même registre),
-pas besoin de le recréer — `k8s/cronjob.yaml` référence le même
+If this Secret already exists in `hemrick` (created for `nao/`, same
+registry), no need to recreate it — `k8s/cronjob.yaml` references the same
 `gar-pull-secret` via `imagePullSecrets`.
 
-### 3.4 Créer le Secret avec la clé de service account GCP
+### 3.4 Create the Secret with the GCP service-account key
 
-**Ne jamais committer la clé.** Créer le Secret directement depuis le fichier
-local :
+**Never commit the key.** Create the Secret directly from the local file:
 
 ```sh
 kubectl create secret generic instacart-gcp-credentials \
@@ -191,66 +191,64 @@ kubectl create secret generic instacart-gcp-credentials \
   -n hemrick
 ```
 
-### 3.5 Déployer le CronJob
+### 3.5 Deploy the CronJob
 
-Cette commande ne lance rien immédiatement — elle enregistre l'objet
-`CronJob` sur le cluster. À partir de là, Kubernetes déclenche
-**automatiquement** un `Job` tous les jours à 6h UTC (`schedule` défini dans
-`k8s/cronjob.yaml`), sans action de ta part :
+This command doesn't run anything immediately — it registers the `CronJob`
+object on the cluster. From then on, Kubernetes **automatically** triggers
+a `Job` every day at 6am UTC (`schedule` set in `k8s/cronjob.yaml`), with no
+action needed on your part:
 
 ```sh
 kubectl -n hemrick apply -f k8s/cronjob.yaml
 ```
 
-### 3.6 Tester sans attendre le schedule
+### 3.6 Test without waiting for the schedule
 
 ```sh
 kubectl -n hemrick create job --from=cronjob/instacart-pipeline instacart-pipeline-manual-1
 ```
 
-Suivre le pod séparément — `kubectl get jobs,pods -w` (deux types de
-ressource + `--watch`) échoue sur certaines versions de kubectl avec
-`you may only specify a single resource type` :
+Watch the pod separately — `kubectl get jobs,pods -w` (two resource types
++ `--watch`) fails on some kubectl versions with `you may only specify a
+single resource type`:
 
 ```sh
 kubectl -n hemrick get pods -l job-name=instacart-pipeline-manual-1 -w
 ```
 
-Puis, une fois le pod `Running` (Ctrl+C pour sortir du `-w` ci-dessus) :
+Then, once the pod is `Running` (Ctrl+C to exit the `-w` above):
 
 ```sh
 kubectl -n hemrick logs job/instacart-pipeline-manual-1 -f
 ```
 
-Si le job existe déjà (deuxième tentative) : `kubectl -n hemrick delete job
-instacart-pipeline-manual-1` avant de relancer `create job`.
+If the job already exists (second attempt): `kubectl -n hemrick delete job
+instacart-pipeline-manual-1` before rerunning `create job`.
 
-### 3.7 Nettoyage
+### 3.7 Cleanup
 
-Le `CronJob` n'a volontairement pas de `ttlSecondsAfterFinished` (projet de
-test, on préfère garder les Jobs visibles dans Lens plutôt que de les voir
-disparaître automatiquement après 10 min). Donc chaque Job — manuel ou
-issu du schedule — doit être supprimé à la main une fois consulté :
+The `CronJob` deliberately has no `ttlSecondsAfterFinished` (test project,
+we'd rather keep Jobs visible in Lens than have them disappear
+automatically after 10 min). So every Job — manual or scheduled — must be
+deleted by hand once reviewed:
 
 ```sh
 kubectl -n hemrick delete job instacart-pipeline-manual-1
 ```
 
-### Dépannage
+### Troubleshooting
 
-- **`docker buildx build --push` échoue avec `error getting credentials`** :
-  le token gcloud a expiré / besoin d'un reauth. `docker-credential-gcloud`
-  échoue silencieusement en mode non-interactif — relance `gcloud auth login`
-  (flow navigateur), puis relance le build.
-- **`ImagePullBackOff` avec `403 Forbidden` / `failed to fetch oauth token`**
-  (`kubectl describe pod ...`) : le Secret `gar-pull-secret` existe mais le SA
-  n'a pas `roles/artifactregistry.reader` sur le repo — relancer la commande
-  `gcloud artifacts repositories add-iam-policy-binding` de la §3.3 (one-time
-  setup, à refaire seulement si le SA change).
-- **Le Job échoue en cours de script** : `run_pipeline.sh` utilise
-  `set -euo pipefail`, donc les logs (`kubectl -n hemrick logs job/...`)
-  s'arrêtent net à l'étape qui a cassé (chargement CSV, tests dbt, ou build
-  du datamart).
-- **Pod bloqué en `Pending`** : `kubectl -n hemrick describe pod <pod>`
-  pour voir l'erreur (montage de Secret manquant, ressources insuffisantes,
-  etc.).
+- **`docker buildx build --push` fails with `error getting credentials`**:
+  the gcloud token expired / needs a reauth. `docker-credential-gcloud`
+  fails silently in non-interactive mode — rerun `gcloud auth login`
+  (browser flow), then rerun the build.
+- **`ImagePullBackOff` with `403 Forbidden` / `failed to fetch oauth token`**
+  (`kubectl describe pod ...`): the `gar-pull-secret` Secret exists but the
+  SA doesn't have `roles/artifactregistry.reader` on the repo — rerun the
+  `gcloud artifacts repositories add-iam-policy-binding` command from §3.3
+  (one-time setup, only needed again if the SA changes).
+- **The Job fails partway through**: `run_pipeline.sh` uses
+  `set -euo pipefail`, so the logs (`kubectl -n hemrick logs job/...`) stop
+  right at the step that broke (CSV load, dbt tests, or datamart build).
+- **Pod stuck in `Pending`**: `kubectl -n hemrick describe pod <pod>` to
+  see the error (missing Secret mount, insufficient resources, etc.).
