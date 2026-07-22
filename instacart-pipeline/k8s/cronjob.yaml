@@ -20,10 +20,10 @@ spec:
         spec:
           restartPolicy: OnFailure
           imagePullSecrets:
-            - name: ghcr-pull-secret
+            - name: gar-pull-secret
           containers:
             - name: instacart-pipeline
-              image: ghcr.io/hemrick/instacart-pipeline:latest
+              image: us-central1-docker.pkg.dev/analytics-with-emeric/instacart-pipeline/ingestion:latest
               env:
                 - name: GCP_SERVICE_ACCOUNT_LOAD_AND_DBT
                   value: /secrets/gcp/service-account.json
