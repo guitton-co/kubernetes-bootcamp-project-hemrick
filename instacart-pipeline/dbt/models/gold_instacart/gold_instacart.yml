@@ -1,0 +1,13 @@
+version: 2
+
+models:
+  - name: product_performance
+    description: >
+      Performance par produit (popularité et taux de réachat), agrégée depuis
+      order_products (prior + train), jointe à products/aisles/departments.
+      Matérialisé dans le dataset gold_instacart.
+    columns:
+      - name: product_id
+        tests:
+          - unique
+          - not_null

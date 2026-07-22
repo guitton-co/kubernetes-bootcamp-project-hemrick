@@ -1,0 +1,13 @@
+.venv
+.env
+.env.example
+*.json
+.git
+.gitignore
+__pycache__
+*.pyc
+specifications
+*.md
+dbt/target
+dbt/dbt_packages
+dbt/logs
