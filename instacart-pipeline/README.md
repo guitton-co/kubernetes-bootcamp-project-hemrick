@@ -172,7 +172,7 @@ Kubernetes Secret to authenticate against Artifact Registry:
 kubectl create secret docker-registry gar-pull-secret \
   --docker-server=us-central1-docker.pkg.dev \
   --docker-username=_json_key \
-  --docker-password="$(cat /path/to/your-key.json)" \
+  --docker-password="$(cat /Users/emerictrossat/code/credentials/analytics-with-emeric-e0d8e4a4e0fe.json)" \
   --docker-email=your-email@example.com \
   -n hemrick
 ```

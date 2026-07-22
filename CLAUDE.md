@@ -34,7 +34,8 @@ examples, not to be confused with the student's own project), and
 Instacart (Kaggle) → BigQuery data pipeline, deployed as a Kubernetes
 `CronJob` in the `hemrick` namespace. Fully self-contained: its own
 `Dockerfile`, own `pyproject.toml`/`uv.lock`, no dependency on the rest of
-the repo to build or deploy. Docs and code comments are in French.
+the repo to build or deploy. Code comments are in French; `README.md` is in
+English (translated from French — keep it in English for future edits).
 
 ### Pipeline steps (`run_pipeline.sh`, run in one container per Job)
 
